@@ -135,6 +135,7 @@ celerybeat.pid
 *.sage.py
 
 # Environments
+.env.example
 .env
 .envrc
 .venv
@@ -205,3 +206,7 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Data
+#  Ignore data files, which may be large and are not necessary to include in version control.
+data/

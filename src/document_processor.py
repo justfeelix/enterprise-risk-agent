@@ -1,41 +1,55 @@
-import os
 from dotenv import load_dotenv
-from langchain_community.document_loaders import PyPDFLoader, DirectoryLoader  # noqa: F401 – used in load_documents implementation
+from langchain_community.document_loaders import PyPDFDirectoryLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+# Load environment variables (API keys)
 load_dotenv()
 
 
 class ComplianceDocumentProcessor:
     """Processes compliance and financial documents for risk analysis."""
 
-    def load_documents(self, data_dir: str):
-        """Load PDF documents from the specified directory.
-
-        Args:
-            data_dir: Path to the directory containing PDF files.
-        """
-        pass
+    def load_documents(self, data_dir: str = "data"):
+        """Load PDF documents from the specified directory."""
+        print(f"📥 Loading PDFs from '{data_dir}'...")
+        # PyPDFDirectoryLoader recursively loads PDF files in a directory.
+        loader = PyPDFDirectoryLoader(data_dir, glob="**/*.pdf")
+        documents = loader.load()
+        print(f"✅ Loaded {len(documents)} document pages.")
+        return documents
 
     def chunk_text(self, documents):
-        """Split documents into smaller chunks suitable for embedding.
-
-        Args:
-            documents: List of loaded document objects to be chunked.
-        """
-        pass
+        """Split documents into smaller overlapping chunks."""
+        print("✂️ Chunking text...")
+        # We use a 200 character overlap so a sentence cut in half isn't lost
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1000, chunk_overlap=200, length_function=len
+        )
+        chunks = text_splitter.split_documents(documents)
+        print(f"✅ Split text into {len(chunks)} searchable chunks.")
+        return chunks
 
     def create_embeddings(self, chunks):
-        """Generate vector embeddings for document chunks and persist to vector store.
-
-        Args:
-            chunks: List of text chunks to embed and store.
-        """
         pass
 
     def query_document(self, query: str):
-        """Query the vector store with a natural language question.
-
-        Args:
-            query: The natural language query string to search against the document store.
-        """
         pass
+
+
+# --- Testing Block ---
+# This allows us to run this specific file from the terminal to test it
+if __name__ == "__main__":
+    processor = ComplianceDocumentProcessor()
+
+    # 1. Load the PDF
+    docs = processor.load_documents()
+
+    # 2. Chunk the text
+    if docs:
+        doc_chunks = processor.chunk_text(docs)
+        # Print a sample to prove it worked
+        print("\n--- SAMPLE CHUNK ---")
+        print(doc_chunks[0].page_content)
+        print(f"--- METADATA: {doc_chunks[0].metadata} ---")
+    else:
+        print("⚠️ No documents found. Did you put a PDF in the data/ folder?")

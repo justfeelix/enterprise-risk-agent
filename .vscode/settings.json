@@ -1,4 +1,5 @@
 {
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
     "[python]": {
         "editor.defaultFormatter": "charliermarsh.ruff",
         "editor.formatOnSave": true,
@@ -8,5 +9,8 @@
         }
     },
     "python.analysis.typeCheckingMode": "basic",
-    "editor.rulers": [88]
+    "editor.rulers": [88],
+    "code-runner.executorMap": {
+        "python": "$pythonPath -u"
+    }
 }
