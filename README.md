@@ -69,3 +69,31 @@ enterprise-risk-agent/
 ## License
 
 See [LICENSE](LICENSE) for details.
+
+## AI Assurance Copilot (V1 Scaffold)
+
+This repository now also includes a first-pass AI assurance runner that performs:
+
+- attack execution against a deliberately vulnerable target bot,
+- rule-based policy judging,
+- evidence logging to JSONL for audit/replay.
+
+### V1 Files
+
+- `src/assurance/target_bot.py` - vulnerable target behavior
+- `src/assurance/attack_library.py` - JSONL attack seed loader
+- `src/assurance/judge.py` - deterministic policy violation judge
+- `src/assurance/runner.py` - CLI run orchestrator
+- `fixtures/attacks_seed.jsonl` - starter attack dataset
+
+### Run V1
+
+```bash
+python -m src.assurance.runner
+```
+
+Optional flags:
+
+```bash
+python -m src.assurance.runner --seed-file fixtures/attacks_seed.jsonl --output-dir outputs/evidence_runs
+```
