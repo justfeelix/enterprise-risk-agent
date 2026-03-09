@@ -16,13 +16,31 @@ from typing import List
 
 from dotenv import load_dotenv
 from langchain_community.document_loaders import PyPDFDirectoryLoader
-from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
-from langchain_openai import ChatOpenAI
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-# Load environment variables (API keys)
+# Load environment variables (.env file must contain GROQ_API_KEY or OPENAI_API_KEY)
 load_dotenv()
+
+
+def _build_llm():
+    """Return the best available LLM based on configured API keys.
+
+    Priority:
+      1. Groq  (GROQ_API_KEY)  – free tier, fast, recommended for students
+      2. OpenAI (OPENAI_API_KEY) – paid, but widely used in production
+      3. None  – retrieval-only mode, no answer synthesis
+    """
+    if os.getenv("GROQ_API_KEY"):
+        from langchain_groq import ChatGroq  # pip install langchain-groq
+
+        return ChatGroq(model="llama-3.1-8b-instant", temperature=0)
+    if os.getenv("OPENAI_API_KEY"):
+        from langchain_openai import ChatOpenAI
+
+        return ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    return None
 
 
 class ComplianceDocumentProcessor:
@@ -135,18 +153,18 @@ class ComplianceDocumentProcessor:
             )
         context = "\n\n".join(context_blocks)
 
-        # If no OpenAI key is configured, return a retrieval-only response.
-        if not os.getenv("OPENAI_API_KEY"):
+        # Use whatever LLM is available; fall back to retrieval-only mode.
+        llm = _build_llm()
+        if llm is None:
             return {
                 "answer": (
-                    "OPENAI_API_KEY not found. Returning retrieved evidence only. "
-                    "Configure a key to generate a synthesized answer."
+                    "No LLM API key found. Returning retrieved evidence only.\n"
+                    "Add GROQ_API_KEY (free) or OPENAI_API_KEY to your .env file."
                 ),
                 "citations": self._format_citations(retrieved_docs),
                 "evidence": context,
             }
 
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
         prompt = (
             "You are a financial and compliance research assistant. "
             "Answer ONLY using the provided evidence. "
