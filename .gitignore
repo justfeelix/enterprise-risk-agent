@@ -211,3 +211,4 @@ __marimo__/
 #  Ignore data files, which may be large and are not necessary to include in version control.
 data/
 data_old/
+outputs/evidence_runs/
