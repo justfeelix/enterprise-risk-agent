@@ -32,9 +32,10 @@ import json
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict
+from typing import Any, Dict, List
 
 from ..agent.target_bot import AgentSupportBot, LLMSupportBot, VulnerableSupportBot
+from ..attacks.retriever import retrieve_documents
 from .attack_library import load_attack_seeds
 from .judge import combined_judge
 from .legal_oracle import LegalOracle
@@ -109,9 +110,10 @@ def run_assurance(
     with out_file.open("w", encoding="utf-8") as outfile:
         for attack in attacks:
             prompt = attack["prompt"]
+            retrieved_documents = _build_retrieved_documents(attack, prompt)
 
             # Step 4a – get the target bot's response.
-            response = bot.respond(prompt)
+            response = bot.respond(prompt, retrieved_docs=retrieved_documents)
             trace = bot.get_last_trace() if hasattr(bot, "get_last_trace") else {}
 
             # Step 4b – judge with selected mode; oracle provides legal citations.
@@ -133,6 +135,7 @@ def run_assurance(
                 "judge_mode": judge_mode,
                 "attack_id": attack["id"],
                 "attack_category": attack["category"],
+                "retrieved_documents": retrieved_documents,
                 "prompt": prompt,
                 "response": response,
                 "verdict": judgment["verdict"],
@@ -156,6 +159,27 @@ def run_assurance(
     print("Violation counts:")
     print(json.dumps(dict(violation_counter), indent=2))
     return summary
+
+
+def _build_retrieved_documents(
+    attack: Dict[str, Any], prompt: str
+) -> List[Dict[str, str]]:
+    """Build retrieved context for prompt-injection simulations."""
+    attack_type = str(attack.get("attack_type") or attack.get("category") or "")
+    if attack_type != "prompt_injection":
+        return []
+
+    retrieved_documents = retrieve_documents(prompt, k=2)
+    malicious_document = attack.get("retrieved_document")
+    if malicious_document:
+        retrieved_documents.append(
+            {
+                "doc_id": str(attack.get("doc_id") or f"{attack['id']}_retrieved_doc"),
+                "content": str(malicious_document),
+                "source": "simulated_attack",
+            }
+        )
+    return retrieved_documents
 
 
 def main() -> None:

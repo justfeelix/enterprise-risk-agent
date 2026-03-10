@@ -1,14 +1,36 @@
 """Trace logging helpers for agent runs."""
 
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 
 
 class TraceLogger:
     """Collect a structured trace of a single agent interaction."""
 
-    def __init__(self, prompt: str) -> None:
+    @staticmethod
+    def _normalize_retrieved_documents(
+        retrieved_documents: Optional[List[Dict[str, Any]]],
+    ) -> List[Dict[str, Any]]:
+        normalized_documents: List[Dict[str, Any]] = []
+        for index, doc in enumerate(retrieved_documents or [], start=1):
+            normalized_documents.append(
+                {
+                    "doc_id": str(doc.get("doc_id", f"doc_{index}")),
+                    "content": str(doc.get("content", "")),
+                    "source": str(doc.get("source", "knowledge_base")),
+                }
+            )
+        return normalized_documents
+
+    def __init__(
+        self,
+        prompt: str,
+        retrieved_documents: Optional[List[Dict[str, Any]]] = None,
+    ) -> None:
         self._trace: Dict[str, Any] = {
             "prompt": prompt,
+            "retrieved_documents": self._normalize_retrieved_documents(
+                retrieved_documents
+            ),
             "llm_output": "",
             "tool_calls": [],
             "tool_results": [],
