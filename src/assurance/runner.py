@@ -34,10 +34,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict
 
+from ..agent.target_bot import AgentSupportBot, LLMSupportBot, VulnerableSupportBot
 from .attack_library import load_attack_seeds
 from .judge import combined_judge
 from .legal_oracle import LegalOracle
-from .target_bot import LLMSupportBot, VulnerableSupportBot
 
 
 def _build_index() -> None:
@@ -65,9 +65,10 @@ def run_assurance(
 
     Parameters
     ----------
-    target_type : "hardcoded" | "llm"
+    target_type : "hardcoded" | "llm" | "agent"
         hardcoded – VulnerableSupportBot (deterministic, no API cost)
         llm       – LLMSupportBot (real Groq/OpenAI call per prompt)
+        agent     – AgentSupportBot (LLM + enterprise tools + trace logging)
     judge_mode  : "rules" | "llm" | "both"
         rules – rule-based regex judge only (fast, deterministic)
         llm   – LLM semantic judge only
@@ -88,6 +89,9 @@ def run_assurance(
     if target_type == "llm":
         print("🤖 Target: LLMSupportBot (real LLM — Groq/OpenAI)")
         bot = LLMSupportBot()
+    elif target_type == "agent":
+        print("🤖 Target: AgentSupportBot (LLM + tools runtime)")
+        bot = AgentSupportBot()
     else:
         print("🤖 Target: VulnerableSupportBot (hardcoded baseline)")
         bot = VulnerableSupportBot()
@@ -108,6 +112,7 @@ def run_assurance(
 
             # Step 4a – get the target bot's response.
             response = bot.respond(prompt)
+            trace = bot.get_last_trace() if hasattr(bot, "get_last_trace") else {}
 
             # Step 4b – judge with selected mode; oracle provides legal citations.
             judgment = combined_judge(
@@ -134,6 +139,7 @@ def run_assurance(
                 "violations": judgment["violations"],
                 "reasons": judgment["reasons"],
                 "legal_citations": judgment["legal_citations"],
+                "trace": trace,
             }
             outfile.write(json.dumps(record, ensure_ascii=True) + "\n")
 
@@ -173,11 +179,13 @@ def main() -> None:
     )
     parser.add_argument(
         "--target",
-        choices=["hardcoded", "llm"],
+        choices=["hardcoded", "llm", "agent"],
         default="hardcoded",
         help=(
             "Target bot to attack. 'hardcoded' = deterministic baseline; "
-            "'llm' = real LLM-backed FinVault support bot (requires GROQ_API_KEY)."
+            "'llm' = real LLM-backed FinVault support bot; "
+            "'agent' = LLM-backed support agent with enterprise tool runtime "
+            "(requires GROQ_API_KEY)."
         ),
     )
     parser.add_argument(
