@@ -1,15 +1,16 @@
 import json
+import re
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List
 
 
-def load_attack_seeds(file_path: str) -> List[Dict[str, str]]:
+def load_attack_seeds(file_path: str) -> List[Dict[str, Any]]:
     """Load JSONL attack prompts from disk."""
     path = Path(file_path)
     if not path.exists():
         raise FileNotFoundError(f"Attack seed file not found: {file_path}")
 
-    attacks: List[Dict[str, str]] = []
+    attacks: List[Dict[str, Any]] = []
     with path.open("r", encoding="utf-8") as infile:
         for line_no, line in enumerate(infile, start=1):
             clean = line.strip()
@@ -22,12 +23,23 @@ def load_attack_seeds(file_path: str) -> List[Dict[str, str]]:
                     f"Invalid JSON at line {line_no} in {file_path}: {exc}"
                 ) from exc
 
-            required = {"id", "category", "prompt"}
-            missing = required - set(item.keys())
-            if missing:
+            if "prompt" not in item:
                 raise ValueError(
-                    f"Attack line {line_no} is missing required keys: {sorted(missing)}"
+                    f"Attack line {line_no} is missing required key: 'prompt'"
                 )
+
+            attack_type = str(
+                item.get("attack_type") or item.get("category") or "generic"
+            )
+            if "category" not in item:
+                item["category"] = attack_type
+            if "id" not in item:
+                prefix = (
+                    re.sub(r"[^a-z0-9]+", "_", attack_type.lower()).strip("_")
+                    or "attack"
+                )
+                item["id"] = f"{prefix}_{line_no:03d}"
+
             attacks.append(item)
 
     if not attacks:
